@@ -1,6 +1,9 @@
 
 # Usage
 
+
+This is a sample yii2 app to show the usage of the PHP package [lucidprogrammer/yii2-simplesamlphp](https://github.com/lucidprogrammer/yii2-simplesamlphp)
+
 ## Environment Settings
 
 Use .env_template and create .env. Fill in the details as per your situation. You should be ready to go.
