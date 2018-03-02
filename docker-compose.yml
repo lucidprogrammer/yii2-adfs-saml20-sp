@@ -1,0 +1,92 @@
+version: '2'
+services:
+  pgsql:
+    build: ./pgsql
+    container_name: pgsql
+    ports:
+      - "5432:5432"
+    environment:
+        # super user and password
+      - "POSTGRES_USER=${POSTGRES_USER}"
+      - "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
+        # another database which will be used for managing saml sessions from SP
+        # if needed, this sample does not use this.
+      - "POSTGRES_SAML_DB=${POSTGRES_SAML_DB}"
+      # another database which could be used as a backend for the yii2 app
+      # making it easy for testing out yii2, not using in this sample
+      - "POSTGRES_YII_DB=${POSTGRES_YII_DB}"
+    networks:
+      - backend
+
+  sp:
+    build:
+      context: ./sp
+      args:
+        # for creating self signed certificates
+        # countrycode
+        - "BUILD_SP_C=${BUILD_SP_C}"
+        # state
+        - "BUILD_SP_ST=${BUILD_SP_ST}"
+        # locality
+        - "BUILD_SP_L=${BUILD_SP_L}"
+        # org
+        - "BUILD_SP_O=${BUILD_SP_O}"
+        # CN
+        - "BUILD_SP_CN=${BUILD_SP_CN}"
+        - "BUILD_SP_EMAIL=${BUILD_SP_EMAIL}"
+    container_name: sp
+    volumes:
+        - ./app:/var/www/html/
+        - ./sp/authsources.php:/var/www/html/vendor/simplesamlphp/simplesamlphp/config/authsources.php:ro
+        - ./sp/config.php:/var/www/html/vendor/simplesamlphp/simplesamlphp/config/config.php:ro
+        - ./sp/saml20-idp-remote.php:/var/www/html/vendor/simplesamlphp/simplesamlphp/metadata/saml20-idp-remote.php:ro
+        # we want to reuse the certificates created during the build in another service(nginx)
+        - "certificates:/var/www/html/cert"
+
+    depends_on:
+      - pgsql
+    environment:
+      - "IDPHOST=${IDPHOST}"
+      - "SAML_STORE_DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgsql:5432/${POSTGRES_SAML_DB}"
+      - "adminpassword=${adminpassword}"
+      - "technicalcontact_name=${technicalcontact_name}"
+      - "technicalcontact_email=${technicalcontact_email}"
+      - "DOCUMENT_ROOT=/var/www/html/web"
+      - "IDP_ENCRYPTION_CERT=${IDP_ENCRYPTION_CERT}"
+      - "IDP_SIGN_CERT=${IDP_SIGN_CERT}"
+      # YII
+      - "DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgsql:5432/${POSTGRES_YII_DB}"
+      - "API_TOKEN=${API_TOKEN}"
+      - "COOKIE_VALIDATION_KEY=${COOKIE_VALIDATION_KEY}"
+      - "IDP_PROVIDED_USER_IDENTIFIER_NAME=${IDP_PROVIDED_USER_IDENTIFIER_NAME}"
+    networks:
+      - backend
+
+
+  nginx:
+    build: ./nginx
+    container_name: nginx
+    restart: always
+    depends_on:
+      - sp
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      # certificates
+      - "certificates:/etc/nginx/ssl/"
+      # proxies
+      - "./nginx/site.nginx.json:/etc/nginx/conf.d/proxies/proxies.json"
+
+
+    environment:
+      - "WEB_HOST=${BUILD_SP_CN}"
+      - "WEB_SSL=${SSL}"
+    networks:
+      - backend
+
+volumes:
+  certificates:
+# overlay
+networks:
+  backend:

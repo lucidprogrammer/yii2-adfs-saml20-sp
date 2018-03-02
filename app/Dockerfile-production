@@ -1,0 +1,11 @@
+FROM lucidprogrammer/apache-php7-composer-pgsql-mysql:latest
+# put this only in the heroku dashboard
+ENV adminpassword password
+ENV technicalcontact_name=Lucid
+ENV technicalcontact_email=lucidprogrammer@hotmail.com
+# put this only in the heroku dashboard
+ENV COOKIE_VALIDATION_KEY=somekey
+ENV DOCUMENT_ROOT=/var/www/html/web
+ADD . /var/www/html
+RUN echo "Alias /saml /var/www/html/vendor/simplesamlphp/simplesamlphp/www" >> /etc/apache2/apache2.conf
+RUN echo "<Directory \"/var/www/html/vendor/simplesamlphp/simplesamlphp/www/\"> \n Options Indexes FollowSymLinks \n AllowOverride all \n Require all granted \n   </Directory>" >> /etc/apache2/apache2.conf

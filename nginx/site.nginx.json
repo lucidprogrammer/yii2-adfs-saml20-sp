@@ -1,0 +1,10 @@
+{
+  "proxies": [
+    {
+      "appName": "sp",
+      "port": "80",
+      "location": {"path": "/","regex": ""}
+    }
+
+  ]
+}
